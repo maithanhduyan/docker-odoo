@@ -1,0 +1,4 @@
+odoo/web-data
+odoo/logs
+postgresql/data
+*.log
