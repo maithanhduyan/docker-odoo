@@ -1,10 +1,10 @@
 version: "3.9"
 services:
-  db:
+  postgresql_db:
     image: postgres:latest
     user: root
     networks:
-      - odoo_network
+      - internal_network
     ports:
       - "5432:5432"
     environment:
@@ -13,7 +13,7 @@ services:
       - POSTGRES_DB=postgres
       # - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      # - odoo-db-data:/var/lib/postgresql/data/pgdata
+      # - odoo-postgresql_db-data:/var/lib/postgresql/data/pgdata
       - ./postgresql/data:/var/lib/postgresql/data
     restart: always # run as a service
 
@@ -26,14 +26,14 @@ services:
       - ./odoo:/etc/odoo # contain config and log
       - ./odoo/web-data:/var/lib/odoo # contain odoo web data
     networks:
-      - odoo_network
+      - internal_network
     ports:
       - "8069:8069" # web
       - "8072:8072" # live chat
     depends_on:
-      - db
+      - postgresql_db
     environment:
-      - HOST=db
+      - HOST=postgresql_db
       - USER=odoo
       - PASSWORD=odoo17@2024
   nginx:
@@ -42,7 +42,7 @@ services:
     user: root
     restart: unless-stopped
     networks:
-      - odoo_network
+      - internal_network
     ports:
       - "80:80"
       - "443:443"
@@ -50,6 +50,7 @@ services:
       - ./nginx/conf:/etc/nginx/conf.d # configuration in default.conf
       - ./nginx/ssl:/etc/nginx/ssl # Secure Sockets Layer (SSL) file: server-sample.crt, server-sample.key
       - ./nginx/html:/usr/share/nginx/html # static html web for example
+      - ./nginx/log:/var/log/nginx/
       # - ./certbot/conf:/etc/nginx/ssl
       # - ./certbot/data:/var/www/html
   # certbot:
@@ -61,7 +62,7 @@ services:
   #     - ./certbot/logs:/var/log/letsencrypt
   #     - ./certbot/data:/var/www/html
 networks:
-  odoo_network:
+  internal_network:
     driver: bridge
 volumes:
   odoo-web-data:
