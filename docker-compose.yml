@@ -36,6 +36,21 @@ services:
       - HOST=postgresql_db
       - USER=odoo
       - PASSWORD=odoo17@2024
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    user: root
+    networks:
+      - internal_network
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin@example.com
+      PGADMIN_DEFAULT_PASSWORD: pgadminpwd
+    ports:
+      - "5050:80"
+    volumes:
+      - ./pgadmin:/var/lib/pgadmin
+      # - ./pgadmin/pgadmin4:/pgadmin4
+    depends_on:
+      - postgresql_db
   nginx:
     container_name: nginx
     image: nginx:latest

@@ -1,4 +1,14 @@
+
+# Postgresql
+postgresql/data
+# Pgadmin
+pgadmin/azurecredentialcache
+pgadmin/sessions
+pgadmin/storage
+pgadmin/pgadmin4.db
+# Odoo
 odoo/web-data
 odoo/logs
-postgresql/data
+# Nginx
+nginx/log
 *.log
