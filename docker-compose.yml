@@ -36,6 +36,7 @@ services:
       - HOST=postgresql_db
       - USER=odoo
       - PASSWORD=odoo17@2024
+
   pgadmin:
     image: dpage/pgadmin4:latest
     user: root
@@ -51,6 +52,64 @@ services:
       # - ./pgadmin/pgadmin4:/pgadmin4
     depends_on:
       - postgresql_db
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail.example.com
+    env_file: ./mailserver/mailserver.env
+    # domainname: example.com
+    networks:
+      - internal_network
+    ports:
+      - "25:25" # SMTP  (explicit TLS => STARTTLS, Authentication is DISABLED => use port 465/587 instead)
+      - "143:143" # IMAP4 (explicit TLS => STARTTLS)
+      - "465:465" # ESMTP (implicit TLS)
+      - "587:587" # ESMTP (explicit TLS => STARTTLS)
+      - "993:993" # IMAP4 (implicit TLS)
+    volumes:
+      - ./mailserver/mail-data/:/var/mail/
+      - ./mailserver/mail-state/:/var/mail-state/
+      - ./mailserver/mail-logs/:/var/log/mail/
+      - ./mailserver/config/:/tmp/docker-mailserver/
+      # - ./mailserver/etc/localtime:/etc/localtime:ro
+    environment:
+      - DMS_DEBUG=0
+      - DMS_VERBOSE=0
+      - DMS_DOVECOT_DEBUG=no
+      - DMS_ADDITIONAL_HOSTNAMES=mail.example.com
+      - ENABLE_RSPAMD=1
+      - ENABLE_CLAMAV=1
+      - ENABLE_FAIL2BAN=1
+    restart: unless-stopped
+    stop_grace_period: 1m
+    # Uncomment if using `ENABLE_FAIL2BAN=1`:
+    cap_add:
+      - NET_ADMIN # For Fail2Ban to work
+    healthcheck:
+      test: "ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1"
+      timeout: 3s
+      retries: 0
+
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    container_name: roundcube
+    networks:
+      - internal_network
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    volumes:
+      - ./roundcube/www:/var/www/html
+      - ./roundcube/db/sqlite:/var/roundcube/db
+    environment:
+      - ROUNDCUBEMAIL_DB_TYPE=sqlite
+      - ROUNDCUBEMAIL_SKIN=elastic
+      - ROUNDCUBEMAIL_DEFAULT_HOST=tls://mail.example.com
+      - ROUNDCUBEMAIL_SMTP_SERVER=tls://mail.example.com
+    depends_on:
+      - mailserver
+
   nginx:
     container_name: nginx
     image: nginx:latest
@@ -66,16 +125,22 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl # Secure Sockets Layer (SSL) file: server-sample.crt, server-sample.key
       - ./nginx/html:/usr/share/nginx/html # static html web for example
       - ./nginx/log:/var/log/nginx/
-      # - ./certbot/conf:/etc/nginx/ssl
-      # - ./certbot/data:/var/www/html
-  # certbot:
-  #   container_name: certbot
-  #   image: certbot/certbot:latest
-  #   command: certonly --webroot --webroot-path=/var/www/html --email youremail@mail.com --agree-tos --no-eff-email -d domain.com -d www.domain.com
-  #   volumes:
-  #     - ./certbot/conf:/etc/letsencrypt
-  #     - ./certbot/logs:/var/log/letsencrypt
-  #     - ./certbot/data:/var/www/html
+      - ./certbot/letsencrypt:/etc/letsencrypt
+      - ./certbot/data:/var/www/html
+
+  certbot:
+    container_name: certbot
+    image: certbot/certbot:latest
+    # command: certonly --webroot --webroot-path=/var/www/html --email youremail@mail.com --agree-tos --no-eff-email -d domain.com -d www.domain.com
+    networks:
+      - internal_network
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/logs:/var/log/letsencrypt
+      - ./certbot/data:/var/www/html
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    restart: unless-stopped
+
 networks:
   internal_network:
     driver: bridge

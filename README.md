@@ -8,6 +8,11 @@ Docker Odoo
 - down
 > docker compose -f "docker-compose.yml" down
 
+# Docker-mailserver and Roundcube webmail
+
+- Create new user: 
+> docker exec -ti <CONTAINER NAME> setup email add user@example.com
+> setup email add admin@example.com
 
 ### Odoo config explain
 ~~~~

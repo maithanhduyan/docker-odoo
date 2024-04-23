@@ -9,6 +9,16 @@ pgadmin/pgadmin4.db
 # Odoo
 odoo/web-data
 odoo/logs
+# mailserver
+mailserver/localtime
+mailserver/mail-data
+mailserver/mail-logs
+mailserver/mail-state
+# roundcube
+roundcube/db
+roundcube/www
 # Nginx
 nginx/log
 *.log
+#certbot
+certbot/logs
